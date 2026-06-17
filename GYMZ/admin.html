@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GYMZ Admin — Gym Status</title>
+<link rel="icon" href="assets/gymz-logo.png" type="image/png" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #000; --surface: #111; --red: #E10600;
+    --white: #fff; --gray: #A1A1A1; --border: rgba(255,255,255,0.08);
+    --green: #22c55e; --yellow: #f59e0b;
+  }
+  body {
+    background: var(--bg); color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100svh; display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 40px 32px; width: 100%; max-width: 420px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 4px;
+  }
+  .logo img { width: 48px; height: 48px; object-fit: contain; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: 2px; }
+  .logo-text span { display: block; font-size: 10px; color: var(--gray); letter-spacing: 3px; font-weight: 600; }
+  h2 { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gray); }
+  /* Login */
+  #loginScreen, #adminScreen { display: flex; flex-direction: column; gap: 16px; }
+  #adminScreen { display: none; }
+  input[type="password"] {
+    background: var(--bg); border: 1px solid var(--border); color: var(--white);
+    padding: 14px 16px; font-size: 15px; width: 100%; outline: none;
+    font-family: inherit; transition: border-color 0.3s;
+  }
+  input[type="password"]:focus { border-color: var(--red); }
+  .btn-login {
+    background: var(--red); color: #fff; border: none; padding: 14px;
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 12px;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: opacity 0.3s;
+  }
+  .btn-login:hover { opacity: 0.85; }
+  .error-msg { color: var(--red); font-size: 13px; display: none; text-align: center; }
+
+  /* Current status */
+  .current-status {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+  }
+  .status-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    animation: pulse 2s infinite;
+  }
+  .status-dot.quiet    { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+  .status-dot.moderate { background: var(--yellow); box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+  .status-dot.busy     { background: var(--red); box-shadow: 0 0 8px rgba(225,6,0,0.5); }
+  .status-dot.loading  { background: var(--gray); animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+  .current-label { font-size: 13px; color: var(--gray); }
+  .current-value { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Status buttons */
+  .status-btns { display: flex; flex-direction: column; gap: 10px; }
+  .status-btn {
+    padding: 18px 20px; border: 1px solid var(--border); background: var(--bg);
+    color: var(--white); font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; display: flex; align-items: center; gap: 14px;
+    transition: all 0.25s; text-align: left;
+  }
+  .status-btn:hover { transform: translateX(4px); }
+  .status-btn.quiet    { border-color: var(--green); }
+  .status-btn.moderate { border-color: var(--yellow); }
+  .status-btn.busy     { border-color: var(--red); }
+  .status-btn .btn-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .status-btn.quiet    .btn-dot { background: var(--green); }
+  .status-btn.moderate .btn-dot { background: var(--yellow); }
+  .status-btn.busy     .btn-dot { background: var(--red); }
+  .status-btn .btn-desc { font-size: 11px; color: var(--gray); font-weight: 400; letter-spacing: 0; font-family: 'Inter', sans-serif; margin-top: 2px; text-transform: none; }
+  .status-btn .btn-content { display: flex; flex-direction: column; gap: 2px; }
+  .status-btn.active-btn { background: rgba(255,255,255,0.04); }
+
+  /* Feedback */
+  .feedback {
+    text-align: center; font-size: 13px; padding: 10px;
+    display: none; border: 1px solid;
+  }
+  .feedback.success { color: var(--green); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.07); }
+  .feedback.error   { color: var(--red);   border-color: rgba(225,6,0,0.3);   background: rgba(225,6,0,0.07); }
+
+  /* Logout */
+  .btn-logout {
+    background: transparent; border: 1px solid var(--border); color: var(--gray);
+    padding: 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    font-family: 'Montserrat', sans-serif; cursor: pointer; transition: all 0.3s; width: 100%;
+  }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* Updated timestamp */
+  .updated-at { font-size: 11px; color: var(--gray); text-align: center; opacity: 0.6; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@600;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <img src="assets/gymz-logo.png" alt="GYMZ" />
+    <div class="logo-text">GYMZ <span>Admin Panel</span></div>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen">
+    <h2>Enter Password</h2>
+    <input type="password" id="passwordInput" placeholder="Admin password..." autocomplete="current-password" />
+    <button class="btn-login" onclick="tryLogin()">Login</button>
+    <p class="error-msg" id="errorMsg">Wrong password. Try again.</p>
+  </div>
+
+  <!-- ADMIN SCREEN -->
+  <div id="adminScreen">
+    <h2>Gym Status</h2>
+
+    <div class="current-status">
+      <div class="status-dot loading" id="currentDot"></div>
+      <div>
+        <div class="current-label">Current Status</div>
+        <div class="current-value" id="currentValue">Loading...</div>
+      </div>
+    </div>
+
+    <div class="status-btns">
+      <button class="status-btn quiet" onclick="setStatus('quiet')">
+        <div class="btn-dot"></div>
+        <div class="btn-content">
+          <span>Quiet — رايق</span>
+          <span class="btn-desc">Few members, easy to train</span>
+        </div>
+      </button>
+      <button class="status-btn moderate" onclick="setStatus('moderate')">
+        <div class="btn-dot"></div>
+        <div class="btn-content">
+          <span>Moderate — متوسط</span>
+          <span class="btn-desc">Normal crowd, equipment available</span>
+        </div>
+      </button>
+      <button class="status-btn busy" onclick="setStatus('busy')">
+        <div class="btn-dot"></div>
+        <div class="btn-content">
+          <span>Busy — مزدحم</span>
+          <span class="btn-desc">Peak hours, may need to wait</span>
+        </div>
+      </button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+    <div class="updated-at" id="updatedAt"></div>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const ADMIN_PASSWORD = "gymz2025";  // ← غيّر الباسورد من هنا
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAr3JBPFwiPqLErSx1czj1HJMrdP1pvQm8",
+    authDomain: "gymz-a2a92.firebaseapp.com",
+    projectId: "gymz-a2a92",
+    storageBucket: "gymz-a2a92.firebasestorage.app",
+    messagingSenderId: "948027314768",
+    appId: "1:948027314768:web:d424fbb4c7a7a28487b755"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const statusRef = doc(db, 'gymStatus', 'current');
+
+  const statusLabels = { quiet: 'Quiet — رايق', moderate: 'Moderate — متوسط', busy: 'Busy — مزدحم' };
+
+  let unsubscribe = null;
+
+  // ── LOGIN ──
+  window.tryLogin = function() {
+    const pass = document.getElementById('passwordInput').value;
+    if (pass === ADMIN_PASSWORD) {
+      sessionStorage.setItem('gymzAdmin', '1');
+      showAdmin();
+    } else {
+      const err = document.getElementById('errorMsg');
+      err.style.display = 'block';
+      document.getElementById('passwordInput').value = '';
+      setTimeout(() => err.style.display = 'none', 3000);
+    }
+  };
+
+  document.getElementById('passwordInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.tryLogin();
+  });
+
+  window.logout = function() {
+    sessionStorage.removeItem('gymzAdmin');
+    if (unsubscribe) unsubscribe();
+    document.getElementById('adminScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('passwordInput').value = '';
+  };
+
+  function showAdmin() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminScreen').style.display = 'flex';
+    startListening();
+  }
+
+  // ── REALTIME LISTENER ──
+  function startListening() {
+    unsubscribe = onSnapshot(statusRef, snap => {
+      const dot = document.getElementById('currentDot');
+      const val = document.getElementById('currentValue');
+      const upd = document.getElementById('updatedAt');
+
+      if (snap.exists()) {
+        const { status, updatedAt } = snap.data();
+        dot.className = 'status-dot ' + (status || 'loading');
+        val.textContent = statusLabels[status] || status;
+
+        // highlight active button
+        document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active-btn'));
+        const activeBtn = document.querySelector('.status-btn.' + status);
+        if (activeBtn) activeBtn.classList.add('active-btn');
+
+        if (updatedAt?.toDate) {
+          const d = updatedAt.toDate();
+          upd.textContent = 'Last updated: ' + d.toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit' });
+        }
+      } else {
+        dot.className = 'status-dot loading';
+        val.textContent = 'Not set';
+      }
+    });
+  }
+
+  // ── SET STATUS ──
+  window.setStatus = async function(status) {
+    const fb = document.getElementById('feedback');
+    try {
+      await setDoc(statusRef, { status, updatedAt: serverTimestamp() });
+      fb.className = 'feedback success';
+      fb.textContent = '✓ Status updated to ' + statusLabels[status];
+      fb.style.display = 'block';
+      setTimeout(() => fb.style.display = 'none', 3000);
+    } catch (e) {
+      fb.className = 'feedback error';
+      fb.textContent = '✗ Error: ' + e.message;
+      fb.style.display = 'block';
+      setTimeout(() => fb.style.display = 'none', 4000);
+    }
+  };
+
+  // ── AUTO LOGIN IF SESSION EXISTS ──
+  if (sessionStorage.getItem('gymzAdmin')) showAdmin();
+</script>
+</body>
+</html>
