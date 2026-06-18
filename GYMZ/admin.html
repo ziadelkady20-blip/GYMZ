@@ -227,6 +227,25 @@ input[type="password"]:focus { border-color: var(--red); }
   </div>
 </div>
 
+<script>
+window.tryLogin = function() {
+  const pass = document.getElementById('passwordInput').value;
+  if (pass === ADMIN_PASSWORD) {
+    sessionStorage.setItem('gymzAdmin', '1');
+    window.__doShowApp && window.__doShowApp();
+  } else {
+    const err = document.getElementById('errorMsg');
+    err.style.display = 'block';
+    document.getElementById('passwordInput').value = '';
+    setTimeout(() => err.style.display = 'none', 3000);
+  }
+};
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') window.tryLogin();
+  });
+});
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -265,21 +284,7 @@ function showFeedback(id, type, msg, ms = 3000) {
 }
 
 // ── LOGIN ──
-window.tryLogin = function() {
-  const pass = document.getElementById('passwordInput').value;
-  if (pass === ADMIN_PASSWORD) {
-    sessionStorage.setItem('gymzAdmin', '1');
-    showApp();
-  } else {
-    const err = document.getElementById('errorMsg');
-    err.style.display = 'block';
-    document.getElementById('passwordInput').value = '';
-    setTimeout(() => err.style.display = 'none', 3000);
-  }
-};
-document.getElementById('passwordInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') window.tryLogin();
-});
+// login handled by plain script above
 window.logout = function() {
   sessionStorage.removeItem('gymzAdmin');
   document.getElementById('appScreen').style.display = 'none';
@@ -287,7 +292,7 @@ window.logout = function() {
   document.getElementById('passwordInput').value = '';
 };
 
-function showApp() {
+window.__doShowApp = function showApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'flex';
   startStatusListener();
@@ -460,7 +465,7 @@ document.getElementById('modalBg').addEventListener('click', e => {
 });
 
 // auto login
-if (sessionStorage.getItem('gymzAdmin')) showApp();
+if (sessionStorage.getItem('gymzAdmin')) window.__doShowApp();
 </script>
 </body>
 </html>
